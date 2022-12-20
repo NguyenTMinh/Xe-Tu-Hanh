@@ -4,6 +4,8 @@
 
 String receive_str; 
 int stop_distance = 10;// Khoảng cách phát hiện vật cản
+bool isInIntersection = false; //bien check co dang o cho giao nhau hay khong true: co, false: khong 
+String bienBao[10]; //Mang luu ket qua 10 bien bao gan nhat
 
 //L298 kết nối arduino
 /**
@@ -124,9 +126,8 @@ void stopCar() {
 }
 
 void carGo() {
+  Serial.println("carGo: ");
   while(true) {
-    Serial.println("carGo: ");
-    delay(1000);
     left_sensor_state = digitalRead(L_S);
     s_sensor_state = digitalRead(S_S);
     right_sensor_state = digitalRead(R_S);
@@ -147,8 +148,21 @@ void carGo() {
       turnRight(); // rẻ phải
     }
     if ((digitalRead(L_S) == 1) && (digitalRead(S_S) == 1) && (digitalRead(R_S) == 1)) {
-      stopCar(); // stop
+      isInIntersection = true;
+      if ( receive_str == "0") {
+        stopCar();
+      } else if(receive_str == "1") {
+        forward(500);
+      } else if(receive_str == "2") {
+        turnLeft();
+        delay(200);
+      } else if(receive_str == "3") {
+        turnRight();
+        delay(200);
+      }
     }
+    
+    delay(1000);
   }
 
   vTaskDelete(NULL);
@@ -159,29 +173,16 @@ void nhanBienBao() {
   
   while(true) {
     delay(1000);
-    if (Serial.available()) {
+    if (Serial.available() && !isInIntersection) {
       receive_str = Serial.readStringUntil('\r');
       Serial.print("nhan data: ");
       Serial.println(receive_str);
      
       if ( receive_str == "0") {
         stopCar();
-      } else if(receive_str == "1") {
-        forward(400);
-        stopCar();
-      } else if(receive_str == "2") {
-        turnLeft();
-        delay(500);
-        stopCar();
-      } else if(receive_str == "3") {
-        Serial.println("re phai:");
-        turnRight();
-        delay(500);
-        stopCar();
-      }
+      } 
     }
-    // Minh: reset lai bien nhan tin hieu de loop khong bi nham
-    receive_str = "4";
+    
   }
 
   vTaskDelete(NULL);
