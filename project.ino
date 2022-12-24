@@ -2,10 +2,10 @@
 #include <Arduino_FreeRTOS.h>
 #include <task.h>
 
+bool check = false;
 String receive_str; 
 int stop_distance = 10;// Khoảng cách phát hiện vật cản
 bool isInIntersection = false; //bien check co dang o cho giao nhau hay khong true: co, false: khong 
-String bienBao[10]; //Mang luu ket qua 10 bien bao gan nhat
 
 //L298 kết nối arduino
 /**
@@ -34,6 +34,7 @@ int right_sensor_state;// biến lưu cảm biến hồng ngoại line phải
 long duration; //
 int distance;  // biến khoảng cách
 const int time_delay_to_turn = 30; // Thoi gian de quay xe, note la can thuc nghiem de biet thoi gian de quay dc gan 90 do nhat
+int carSpeed = 100;
 
 TaskHandle_t go_handler;
 TaskHandle_t data_handler;
@@ -50,10 +51,10 @@ void setup() {
   pinMode(motorBspeed, OUTPUT);
   
   Serial.begin(9600);
-  analogWrite(motorAspeed, 110); // tốc độ động cơ a ban đầu 120 ( 0 - 255)
-  analogWrite(motorBspeed, 110);// tốc độ động cơ b ban đầu 120 ( 0 - 255)
+  analogWrite(motorAspeed, carSpeed); // tốc độ động cơ a ban đầu 120 ( 0 - 255)
+  analogWrite(motorBspeed, carSpeed);// tốc độ động cơ b ban đầu 120 ( 0 - 255)
   xTaskCreate(carGo, "carGO", 128,NULL ,1, &go_handler);
-  //xTaskCreate(nhanBienBao, "nhanBienBao", 128, NULL,1, &data_handler);
+  xTaskCreate(nhanBienBao, "nhanBienBao", 128, NULL,1, &data_handler);
 }
 
 void loop() {
@@ -93,7 +94,7 @@ void backward(int runTime) {
 }
 
 void forward(int runTime) { // chương trình con xe robot đi tiến
-  Serial.println("forward:");
+//  Serial.println("forward:");
   digitalWrite (motorA1, LOW);
   digitalWrite(motorA2, HIGH);
   digitalWrite (motorB1, HIGH);
@@ -102,7 +103,7 @@ void forward(int runTime) { // chương trình con xe robot đi tiến
 }
 
 void turnRight() {
-  Serial.println("re phai:");
+//  Serial.println("re phai:");
   digitalWrite (motorA1, LOW);
   digitalWrite(motorA2, LOW);
   digitalWrite (motorB1, HIGH);
@@ -110,7 +111,7 @@ void turnRight() {
 }
 
 void turnLeft() {
-  Serial.println("re trai:");
+  //Serial.println("re trai:");
   digitalWrite (motorA1, LOW);
   digitalWrite(motorA2, HIGH);
   digitalWrite (motorB1, LOW);
@@ -118,7 +119,7 @@ void turnLeft() {
 }
 
 void stopCar() {
-  Serial.println("stop: ");
+//  Serial.println("stop: ");
   digitalWrite (motorA1, LOW);
   digitalWrite(motorA2, LOW);
   digitalWrite (motorB1, LOW);
@@ -133,7 +134,7 @@ void carGo() {
     right_sensor_state = digitalRead(R_S);
   
     if ((digitalRead(L_S) == 0) && (digitalRead(S_S) == 1) && (digitalRead(R_S) == 0)) {
-      forward(500); // đi tiến
+      forward(0); // đi tiến
     }
     if ((digitalRead(L_S) == 1) && (digitalRead(S_S) == 1) && (digitalRead(R_S) == 0)) {
       turnLeft(); // rẻ trái
@@ -152,17 +153,29 @@ void carGo() {
       if ( receive_str == "0") {
         stopCar();
       } else if(receive_str == "1") {
+        stopCar();
+        delay(100);
         forward(500);
       } else if(receive_str == "2") {
+        stopCar();
+        delay(1000);
+        forward(1000);
         turnLeft();
         delay(200);
       } else if(receive_str == "3") {
+        stopCar();
+        delay(1000);
+        forward(1000);
         turnRight();
         delay(200);
+      } else if (receive_str == "5") {
+        stopCar();
       }
+      receive_str = "4";
+      isInIntersection = false;
     }
     
-    delay(1000);
+    
   }
 
   vTaskDelete(NULL);
@@ -178,10 +191,16 @@ void nhanBienBao() {
       Serial.print("nhan data: ");
       Serial.println(receive_str);
      
-      if ( receive_str == "0") {
-        stopCar();
-      } 
     }
+    if ( receive_str == "0") {
+        stopCar();
+        vTaskSuspend(go_handler);
+      } else if (receive_str == "5") {
+
+          vTaskResume(go_handler);
+        
+      }
+      
     
   }
 
